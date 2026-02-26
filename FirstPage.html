@@ -2,22 +2,364 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>My First Website</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Compare & Import Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f6f9fc;
+            color: #1f2937;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.8rem;
+        }
+
+        .helper {
+            margin-bottom: 18px;
+            color: #4b5563;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 14px;
+            background: #fcfcfd;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #c7ced9;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+        }
+
+        button {
+            background: #2563eb;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            margin-top: 12px;
+            font-weight: 700;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button.secondary {
+            background: #059669;
+        }
+
+        button.secondary:hover {
+            background: #047857;
+        }
+
+        .results {
+            margin-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .stat {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 1.3rem;
+            color: #1d4ed8;
+        }
+
+        #message {
+            margin-top: 12px;
+            font-weight: 600;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Excel to Excel Compare Tool</h1>
+        <p class="helper">
+            Upload two Excel files, pick the unique ID column, and compare records. You can then export only mismatched rows for easy import/update.
+        </p>
 
-    <header>
-        <h1>Welcome to My Website</h1>
-        <p>This is my first website</p>
-    </header>
+        <div class="grid">
+            <div class="card">
+                <h3>Source File (Sheet A)</h3>
+                <label for="fileA">Select Excel file</label>
+                <input id="fileA" type="file" accept=".xlsx,.xls,.csv">
 
-    <section>
-        <h2>About Me</h2>
-        <p>My name is Ajit. I am learning web development.</p>
-        <button onclick="showMessage()">Click Me</button>
-    </section>
+                <label for="sheetA">Sheet</label>
+                <select id="sheetA" disabled></select>
+            </div>
 
-    <script src="script.js"></script>
+            <div class="card">
+                <h3>Target File (Sheet B)</h3>
+                <label for="fileB">Select Excel file</label>
+                <input id="fileB" type="file" accept=".xlsx,.xls,.csv">
+
+                <label for="sheetB">Sheet</label>
+                <select id="sheetB" disabled></select>
+            </div>
+
+            <div class="card">
+                <h3>Compare Settings</h3>
+                <label for="keyColumn">Unique key column</label>
+                <select id="keyColumn" disabled></select>
+
+                <button id="compareBtn" disabled>Compare Files</button>
+                <button id="exportBtn" class="secondary hidden">Export Differences (CSV)</button>
+                <p id="message"></p>
+            </div>
+        </div>
+
+        <div class="results hidden" id="results">
+            <h3>Comparison Summary</h3>
+            <div class="stats">
+                <div class="stat">Matched rows <strong id="matchedCount">0</strong></div>
+                <div class="stat">Only in Sheet A <strong id="onlyACount">0</strong></div>
+                <div class="stat">Only in Sheet B <strong id="onlyBCount">0</strong></div>
+            </div>
+
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            wbA: null,
+            wbB: null,
+            rowsA: [],
+            rowsB: [],
+            headers: [],
+            diffRows: []
+        };
+
+        const fileA = document.getElementById('fileA');
+        const fileB = document.getElementById('fileB');
+        const sheetA = document.getElementById('sheetA');
+        const sheetB = document.getElementById('sheetB');
+        const keyColumn = document.getElementById('keyColumn');
+        const compareBtn = document.getElementById('compareBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const message = document.getElementById('message');
+        const results = document.getElementById('results');
+        const preview = document.getElementById('preview');
+
+        fileA.addEventListener('change', async (e) => {
+            state.wbA = await readWorkbook(e.target.files[0]);
+            loadSheets(state.wbA, sheetA);
+            updateReadyState();
+        });
+
+        fileB.addEventListener('change', async (e) => {
+            state.wbB = await readWorkbook(e.target.files[0]);
+            loadSheets(state.wbB, sheetB);
+            updateReadyState();
+        });
+
+        sheetA.addEventListener('change', updateHeadersFromSource);
+        sheetB.addEventListener('change', updateHeadersFromSource);
+        compareBtn.addEventListener('click', compareFiles);
+        exportBtn.addEventListener('click', exportDifferences);
+
+        async function readWorkbook(file) {
+            if (!file) return null;
+            const data = await file.arrayBuffer();
+            return XLSX.read(data, { type: 'array' });
+        }
+
+        function loadSheets(workbook, targetSelect) {
+            targetSelect.innerHTML = '';
+            workbook.SheetNames.forEach((name, idx) => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                if (idx === 0) option.selected = true;
+                targetSelect.appendChild(option);
+            });
+            targetSelect.disabled = false;
+            updateHeadersFromSource();
+        }
+
+        function updateHeadersFromSource() {
+            if (!state.wbA || !sheetA.value) return;
+            const sheet = state.wbA.Sheets[sheetA.value];
+            const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            state.headers = rows.length ? Object.keys(rows[0]) : [];
+            keyColumn.innerHTML = '';
+
+            state.headers.forEach((name) => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                keyColumn.appendChild(option);
+            });
+
+            keyColumn.disabled = state.headers.length === 0;
+            updateReadyState();
+        }
+
+        function updateReadyState() {
+            const ready = state.wbA && state.wbB && sheetA.value && sheetB.value && keyColumn.options.length > 0;
+            compareBtn.disabled = !ready;
+        }
+
+        function compareFiles() {
+            try {
+                const key = keyColumn.value;
+                state.rowsA = XLSX.utils.sheet_to_json(state.wbA.Sheets[sheetA.value], { defval: '' });
+                state.rowsB = XLSX.utils.sheet_to_json(state.wbB.Sheets[sheetB.value], { defval: '' });
+
+                const mapA = buildKeyMap(state.rowsA, key);
+                const mapB = buildKeyMap(state.rowsB, key);
+
+                let matched = 0;
+                const onlyA = [];
+                const onlyB = [];
+
+                mapA.forEach((row, id) => {
+                    if (mapB.has(id)) {
+                        matched += 1;
+                    } else {
+                        onlyA.push({ status: 'Only in A', ...row });
+                    }
+                });
+
+                mapB.forEach((row, id) => {
+                    if (!mapA.has(id)) {
+                        onlyB.push({ status: 'Only in B', ...row });
+                    }
+                });
+
+                state.diffRows = [...onlyA, ...onlyB];
+
+                document.getElementById('matchedCount').textContent = matched;
+                document.getElementById('onlyACount').textContent = onlyA.length;
+                document.getElementById('onlyBCount').textContent = onlyB.length;
+
+                renderPreview(state.diffRows.slice(0, 10));
+                results.classList.remove('hidden');
+                exportBtn.classList.toggle('hidden', state.diffRows.length === 0);
+                message.textContent = state.diffRows.length
+                    ? `Comparison complete. Found ${state.diffRows.length} differences.`
+                    : 'Comparison complete. No differences found.';
+            } catch (err) {
+                message.textContent = `Error: ${err.message}`;
+            }
+        }
+
+        function buildKeyMap(rows, key) {
+            const map = new Map();
+            rows.forEach((row, index) => {
+                const value = String(row[key] ?? '').trim();
+                if (!value) {
+                    throw new Error(`Row ${index + 2} has empty key in column "${key}".`);
+                }
+                if (map.has(value)) {
+                    throw new Error(`Duplicate key "${value}" found in column "${key}".`);
+                }
+                map.set(value, row);
+            });
+            return map;
+        }
+
+        function renderPreview(rows) {
+            if (!rows.length) {
+                preview.innerHTML = '<p>No difference rows to preview.</p>';
+                return;
+            }
+
+            const columns = Object.keys(rows[0]);
+            const headerHtml = columns.map((c) => `<th>${c}</th>`).join('');
+            const bodyHtml = rows.map((row) => `<tr>${columns.map((c) => `<td>${row[c] ?? ''}</td>`).join('')}</tr>`).join('');
+
+            preview.innerHTML = `
+                <p>Showing first ${rows.length} difference rows:</p>
+                <table>
+                    <thead><tr>${headerHtml}</tr></thead>
+                    <tbody>${bodyHtml}</tbody>
+                </table>
+            `;
+        }
+
+        function exportDifferences() {
+            if (!state.diffRows.length) return;
+            const ws = XLSX.utils.json_to_sheet(state.diffRows);
+            const csv = XLSX.utils.sheet_to_csv(ws);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'excel-differences.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
 </body>
 </html>
