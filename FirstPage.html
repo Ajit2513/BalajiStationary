@@ -1,22 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>My First Website</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Supplier Payout Excel Helper</title>
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+    <main class="container">
+        <header class="hero">
+            <h1>Supplier Payout Excel Helper</h1>
+            <p>
+                Download ready-to-use CSV sheets for raw data, brand + supplier margin tracking,
+                EOSS scheme range management, and date-range margin difference analysis.
+            </p>
+        </header>
 
-    <header>
-        <h1>Welcome to My Website</h1>
-        <p>This is my first website</p>
-    </header>
+        <section class="card">
+            <h2>1) Raw Data Sheet Columns</h2>
+            <p class="muted">Use this as your base sheet where transaction-level data is captured.</p>
+            <div class="button-row">
+                <button data-sheet="rawData">Download RawData.csv</button>
+            </div>
+            <ul>
+                <li>Required keys: <strong>Date</strong>, <strong>Brand</strong>, <strong>Supplier</strong>, <strong>Invoice No</strong>.</li>
+                <li>Value columns: <strong>Sales Amount</strong>, <strong>Cost Amount</strong>, <strong>Base Margin %</strong>.</li>
+                <li>Computation columns: <strong>Margin Amount</strong>, <strong>Net Payout</strong>.</li>
+            </ul>
+        </section>
 
-    <section>
-        <h2>About Me</h2>
-        <p>My name is Ajit. I am learning web development.</p>
-        <button onclick="showMessage()">Click Me</button>
-    </section>
+        <section class="card">
+            <h2>2) Brand + Supplier Margin by Date Range</h2>
+            <p class="muted">Keep this mapping sheet to maintain agreed margin % by period.</p>
+            <div class="button-row">
+                <button data-sheet="marginConfig">Download MarginConfig.csv</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>3) EOSS Scheme Range</h2>
+            <p class="muted">Track scheme percentage adjustments applicable for a specific period.</p>
+            <div class="button-row">
+                <button data-sheet="eossScheme">Download EOSS_Scheme.csv</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>4) Period Margin Difference Summary</h2>
+            <p class="muted">Compares actual margin with configured margin and highlights differences.</p>
+            <div class="button-row">
+                <button data-sheet="periodSummary">Download Period_Summary.csv</button>
+                <button data-sheet="all">Download All 4 CSVs</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Actual Margin %</td>
+                        <td>(Sales - Cost) / Sales</td>
+                    </tr>
+                    <tr>
+                        <td>Configured Margin %</td>
+                        <td>Margin from Brand + Supplier + Date range mapping</td>
+                    </tr>
+                    <tr>
+                        <td>Margin Difference %</td>
+                        <td>Actual Margin % - Configured Margin %</td>
+                    </tr>
+                    <tr>
+                        <td>Difference Amount</td>
+                        <td>Sales Amount × Margin Difference %</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
 
     <script src="script.js"></script>
 </body>
